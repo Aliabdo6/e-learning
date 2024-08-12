@@ -1,0 +1,37 @@
+// app/api/enroll/route.js
+import { NextResponse } from "next/server";
+import dbConnect from "../../../lib/mongodb";
+import User from "../../../models/User";
+import { auth } from "@clerk/nextjs/server";
+
+export async function POST(req) {
+  await dbConnect();
+  const { userId } = auth();
+  const { courseId } = await req.json();
+
+  if (!userId) {
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: 401 }
+    );
+  }
+
+  try {
+    const user = await User.findOneAndUpdate(
+      { clerkId: userId },
+      {
+        $addToSet: {
+          enrolledCourses: { course: courseId },
+        },
+      },
+      { new: true }
+    );
+
+    return NextResponse.json(user);
+  } catch (error) {
+    return NextResponse.json(
+      { error: error.message },
+      { status: 500 }
+    );
+  }
+}
